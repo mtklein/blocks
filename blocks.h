@@ -3,6 +3,7 @@
 struct Builder *builder(void);
 
 typedef struct { int id; } Val;
+typedef struct { Val x,y,z,w; } Val4;
 static const Val nil = {0};
 
 Val            arg(struct Builder*, int ix);
@@ -33,6 +34,7 @@ Val shl(struct Builder*, Val, Val);
 Val shr(struct Builder*, Val, Val);
 Val sra(struct Builder*, Val, Val);
 
-struct Program* ret(struct Builder*, Val);
-Val            call(struct Builder*, struct Program const*, Val, Val, Val, Val);
-void        execute(                 struct Program const*, int n, void* ptr[]);
+struct Program* ret(struct Builder*, Val,Val,Val,Val);
+Val4 call(struct Builder*, struct Program const*, Val,Val,Val,Val);
+
+void execute(struct Program const*, int n, void* ptr[]);

@@ -46,11 +46,11 @@ static Val push_(Builder *b, Inst inst) {
 
 Builder* builder(void) {
     Builder *b = calloc(1, sizeof *b);
-    b->insts = 5;  // Slot 0 for return value, 1-4 for arguments.
+    b->insts = 8;  // Slots 0-3 for return values, 4-7 for arguments.
     b->inst  = calloc(8, sizeof *b->inst);
     return b;
 }
-Val arg(struct Builder *b, int i) { (void)b; return (Val){i+1}; }
+Val arg(struct Builder *b, int i) { (void)b; return (Val){i+4}; }
 
 #define stage(name) static void name##_(Inst const *ip, Vec *v, int end, void *ptr[])
 #define next        ip[1].fn(ip+1,v+1,end,ptr); return
@@ -134,26 +134,38 @@ Val shr(Builder *b, Val x, Val y) { return push(b, shr_, x.id, y.id); }
 Val sra(Builder *b, Val x, Val y) { return push(b, sra_, x.id, y.id); }
 
 stage(ret) {
-    v[ip->imm] = v[ip->x];
+    v[ip->imm+0] = v[ip->x];
+    v[ip->imm+1] = v[ip->y];
+    v[ip->imm+2] = v[ip->z];
+    v[ip->imm+3] = v[ip->w];
     (void)end;
     (void)ptr;
     return;
 }
 
-Program* ret(Builder *b, Val x) {
-    push(b, ret_, x.id, .imm=-b->insts);
+Program* ret(Builder *b, Val x, Val y, Val z, Val w) {
+    push(b, ret_, x.id, y.id, z.id, w.id, .imm=-b->insts);
 
-    Program *p = calloc(1, sizeof *p + (size_t)(b->insts - 5) * sizeof *p->inst);
+    int insts = 0;
+    for (int i = 0; i < b->insts; i++) {
+        if (b->inst[i].fn) {
+            insts++;
+        }
+    }
+
+    Program *p = calloc(1, sizeof *p + (size_t)insts * sizeof *p->inst);
     p->slots = b->insts;
 
     Inst *inst = p->inst;
-    for (int i = 5; i < b->insts; i++) {
-        *inst = b->inst[i];
-        inst->x -= i;
-        inst->y -= i;
-        inst->z -= i;
-        inst->w -= i;
-        inst++;
+    for (int i = 0; i < b->insts; i++) {
+        if (b->inst[i].fn) {
+            *inst = b->inst[i];
+            inst->x -= i;
+            inst->y -= i;
+            inst->z -= i;
+            inst->w -= i;
+            inst++;
+        }
     }
 
     free(b->inst);
@@ -165,8 +177,8 @@ void execute(Program const *p, int n, void *ptr[]) {
     Vec scratch[4096 / sizeof(Vec)];
     Vec *v = p->slots <= len(scratch) ? scratch
                                       : calloc((size_t)p->slots, sizeof *v);
-    for (int i = 0; i < n/K*K; i += K) { p->inst->fn(p->inst,v+5,i+K,ptr); }
-    for (int i = n/K*K; i < n; i += 1) { p->inst->fn(p->inst,v+5,i+1,ptr); }
+    for (int i = 0; i < n/K*K; i += K) { p->inst->fn(p->inst,v+8,i+K,ptr); }
+    for (int i = n/K*K; i < n; i += 1) { p->inst->fn(p->inst,v+8,i+1,ptr); }
     if (v != scratch) {
         free(v);
     }
@@ -177,17 +189,27 @@ stage(call) {
     Program const *p = ip->call;
     Vec *cv = p->slots <= len(scratch) ? scratch
                                        : calloc((size_t)p->slots, sizeof *cv);
-    cv[1] = v[ip->x];
-    cv[2] = v[ip->y];
-    cv[3] = v[ip->z];
-    cv[4] = v[ip->w];
-    p->inst->fn(p->inst,cv+5,end,ptr);
-    *v = cv[0];
+    cv[4] = v[ip->x];
+    cv[5] = v[ip->y];
+    cv[6] = v[ip->z];
+    cv[7] = v[ip->w];
+    p->inst->fn(p->inst,cv+8,end,ptr);
+    v[0] = cv[0];
+    v[1] = cv[1];
+    v[2] = cv[2];
+    v[3] = cv[3];
     if (cv != scratch) {
         free(cv);
     }
+    v += 3;
     next;
 }
-Val call(Builder *b, Program const *p, Val x, Val y, Val z, Val w) {
-    return push(b, call_, x.id,y.id,z.id,w.id, .call=p);
+Val4 call(Builder *b, Program const *p, Val x, Val y, Val z, Val w) {
+    x = push(b, call_, x.id,y.id,z.id,w.id, .call=p);
+    return (Val4) {
+        x,
+        push(b, NULL, x.id),
+        push(b, NULL, x.id),
+        push(b, NULL, x.id),
+    };
 }
