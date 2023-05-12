@@ -139,15 +139,14 @@ Val shr(Builder *b, Val x, Val y) { return push(b, shr_, x.id, y.id); }
 Val sra(Builder *b, Val x, Val y) { return push(b, sra_, x.id, y.id); }
 
 stage(ret) {
-    int insts = ip->imm;
-    v[-insts] = v[ip->x];
+    v[ip->imm] = v[ip->x];
     (void)end;
     (void)ptr;
     return;
 }
 
 Program* ret(Builder *b, Val x) {
-    push(b, ret_, x.id, .imm=b->insts);
+    push(b, ret_, x.id, .imm=-b->insts);
 
     Program *p = malloc(sizeof *p + (size_t)b->insts * sizeof *p->inst);
     p->insts   = 0;
