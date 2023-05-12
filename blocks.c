@@ -20,7 +20,7 @@ typedef struct Inst {
 } Inst;
 
 typedef struct Builder {
-    int   insts,unused;
+    int   slots,unused;
     Inst *inst;
 } Builder;
 
@@ -35,18 +35,18 @@ static _Bool is_pow2_or_zero(int x) {
 }
 
 static Val push_(Builder *b, Inst inst) {
-    if (is_pow2_or_zero(b->insts)) {
-        assert(b->insts);
-        b->inst = realloc(b->inst, sizeof *b->inst * (size_t)b->insts*2);
+    if (is_pow2_or_zero(b->slots)) {
+        assert(b->slots);
+        b->inst = realloc(b->inst, sizeof *b->inst * (size_t)b->slots*2);
     }
-    b->inst[b->insts] = inst;
-    return (Val){b->insts++};
+    b->inst[b->slots] = inst;
+    return (Val){b->slots++};
 }
 #define push(b,...) push_(b, (Inst){.fn=__VA_ARGS__})
 
 Builder* builder(void) {
     Builder *b = calloc(1, sizeof *b);
-    b->insts = 8;  // Slots 0-3 for return values, 4-7 for arguments.
+    b->slots = 8;  // Slots 0-3 for return values, 4-7 for arguments.
     b->inst  = calloc(8, sizeof *b->inst);
     return b;
 }
@@ -144,20 +144,20 @@ stage(ret) {
 }
 
 Program* ret(Builder *b, Val x, Val y, Val z, Val w) {
-    push(b, ret_, x.id, y.id, z.id, w.id, .imm=-b->insts);
+    push(b, ret_, x.id, y.id, z.id, w.id, .imm=-b->slots);
 
     int insts = 0;
-    for (int i = 0; i < b->insts; i++) {
+    for (int i = 0; i < b->slots; i++) {
         if (b->inst[i].fn) {
             insts++;
         }
     }
 
     Program *p = calloc(1, sizeof *p + (size_t)insts * sizeof *p->inst);
-    p->slots = b->insts;
+    p->slots = b->slots;
 
     Inst *inst = p->inst;
-    for (int i = 0; i < b->insts; i++) {
+    for (int i = 0; i < b->slots; i++) {
         if (b->inst[i].fn) {
             *inst = b->inst[i];
             inst->x -= i;
