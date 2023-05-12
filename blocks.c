@@ -13,8 +13,7 @@ typedef union {
 
 typedef struct Inst {
     void (*fn)(struct Inst const *ip, Vec *v, int end, void *ptr[]);
-    int x,y,z,w,ptr;
-    union { int immi; unsigned immu; float immf; };
+    int x,y,z,w,ptr,imm;
     struct Program const *call;
 } Inst;
 
@@ -62,6 +61,21 @@ Val arg(struct Builder *b, int i) {
 #define stage(name) static void name##_(Inst const *ip, Vec *v, int end, void *ptr[])
 #define next        ip[1].fn(ip+1,v+1,end,ptr); return
 
+stage(splat) {
+    v->i = (vec(int)){0} + ip->imm;
+    next;
+}
+Val splat(Builder *b, int imm) { return push(b, splat_, .imm=imm); }
+
+stage(load_uniform) {
+    int const *p = ptr[ip->ptr];
+    v->i = (vec(int)){0} + p[ip->imm];
+    next;
+}
+Val load_uniform(Builder *b, int ptr, int off) {
+    return push(b, load_uniform_, .ptr=ptr, .imm=off);
+}
+
 stage(load_varying) {
     int const *p = ptr[ip->ptr];
     (end & (K-1)) ? __builtin_memcpy(v, p + end - 1, 1*sizeof(int))
@@ -77,14 +91,55 @@ stage(store_varying) {
 }
 void store_varying(Builder *b, int ptr, Val x) { push(b, store_varying_, x.id, .ptr=ptr); }
 
-stage(fadd) {
-    v->f = v[ip->x].f + v[ip->y].f;
-    next;
-}
-Val fadd(Builder *b, Val x, Val y) { return push(b, fadd_, x.id,y.id); }
+stage(fadd) { v->f = v[ip->x].f + v[ip->y].f             ; next; }
+stage(fsub) { v->f = v[ip->x].f - v[ip->y].f             ; next; }
+stage(fmul) { v->f = v[ip->x].f * v[ip->y].f             ; next; }
+stage(fdiv) { v->f = v[ip->x].f / v[ip->y].f             ; next; }
+stage(fmad) { v->f = v[ip->x].f * v[ip->y].f + v[ip->z].f; next; }
+
+Val fadd(Builder *b, Val x, Val y       ) { return push(b, fadd_, x.id, y.id      ); }
+Val fsub(Builder *b, Val x, Val y       ) { return push(b, fsub_, x.id, y.id      ); }
+Val fmul(Builder *b, Val x, Val y       ) { return push(b, fmul_, x.id, y.id      ); }
+Val fdiv(Builder *b, Val x, Val y       ) { return push(b, fdiv_, x.id, y.id      ); }
+Val fmad(Builder *b, Val x, Val y, Val z) { return push(b, fmad_, x.id, y.id, z.id); }
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wfloat-equal"
+stage(feq) { v->i = v[ip->x].f == v[ip->y].f; next; }
+stage(fne) { v->i = v[ip->x].f != v[ip->y].f; next; }
+stage(flt) { v->i = v[ip->x].f <  v[ip->y].f; next; }
+stage(fle) { v->i = v[ip->x].f <= v[ip->y].f; next; }
+stage(fgt) { v->i = v[ip->x].f >  v[ip->y].f; next; }
+stage(fge) { v->i = v[ip->x].f >= v[ip->y].f; next; }
+#pragma GCC diagnostic pop
+
+Val feq(Builder *b, Val x, Val y) { return push(b, feq_, x.id, y.id); }
+Val fne(Builder *b, Val x, Val y) { return push(b, fne_, x.id, y.id); }
+Val flt(Builder *b, Val x, Val y) { return push(b, flt_, x.id, y.id); }
+Val fle(Builder *b, Val x, Val y) { return push(b, fle_, x.id, y.id); }
+Val fgt(Builder *b, Val x, Val y) { return push(b, fgt_, x.id, y.id); }
+Val fge(Builder *b, Val x, Val y) { return push(b, fge_, x.id, y.id); }
+
+stage(band) { v->i =  v[ip->x].i & v[ip->y].i                              ; next; }
+stage(bor ) { v->i =  v[ip->x].i | v[ip->y].i                              ; next; }
+stage(bxor) { v->i =  v[ip->x].i ^ v[ip->y].i                              ; next; }
+stage(bsel) { v->i = (v[ip->x].i & v[ip->y].i) | (~v[ip->x].i & v[ip->z].i); next; }
+
+Val band(Builder *b, Val x, Val y       ) { return push(b, band_, x.id, y.id      ); }
+Val bor (Builder *b, Val x, Val y       ) { return push(b, bor_ , x.id, y.id      ); }
+Val bxor(Builder *b, Val x, Val y       ) { return push(b, bxor_, x.id, y.id      ); }
+Val bsel(Builder *b, Val x, Val y, Val z) { return push(b, bsel_, x.id, y.id, z.id); }
+
+stage(shl) { v->u = v[ip->x].u << v[ip->y].i; next; }
+stage(shr) { v->u = v[ip->x].u >> v[ip->y].i; next; }
+stage(sra) { v->i = v[ip->x].i >> v[ip->y].i; next; }
+
+Val shl(Builder *b, Val x, Val y) { return push(b, shl_, x.id, y.id); }
+Val shr(Builder *b, Val x, Val y) { return push(b, shr_, x.id, y.id); }
+Val sra(Builder *b, Val x, Val y) { return push(b, sra_, x.id, y.id); }
 
 stage(ret) {
-    int insts = ip->immi;
+    int insts = ip->imm;
     v[-insts] = v[ip->x];
     (void)end;
     (void)ptr;
@@ -92,7 +147,7 @@ stage(ret) {
 }
 
 Program* ret(Builder *b, Val x) {
-    push(b, ret_, x.id, .immi=b->insts);
+    push(b, ret_, x.id, .imm=b->insts);
 
     Program *p = malloc(sizeof *p + (size_t)b->insts * sizeof *p->inst);
     p->insts   = 0;
@@ -104,7 +159,7 @@ Program* ret(Builder *b, Val x) {
             b->inst[i].z - i,
             b->inst[i].w - i,
             b->inst[i].ptr,
-           {b->inst[i].immi},
+            b->inst[i].imm,
             b->inst[i].call,
         };
     }

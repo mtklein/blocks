@@ -6,8 +6,8 @@ typedef struct { int id; } Val;
 
 Val            nil(struct Builder*);
 Val            arg(struct Builder*, int ix);
-Val          splat(struct Builder*, unsigned imm);
-Val   load_uniform(struct Builder*, int ptr, unsigned off);
+Val          splat(struct Builder*, int imm);
+Val   load_uniform(struct Builder*, int ptr, int off);
 Val   load_varying(struct Builder*, int ptr);
 void store_varying(struct Builder*, int ptr, Val);
 
