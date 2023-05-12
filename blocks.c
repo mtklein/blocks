@@ -142,17 +142,15 @@ Program* ret(Builder *b, Val x) {
 
     Program *p = malloc(sizeof *p + (size_t)(b->insts - 5) * sizeof *p->inst);
     p->slots = b->insts;
+
+    Inst *inst = p->inst;
     for (int i = 5; i < b->insts; i++) {
-        p->inst[i-5] = (Inst){
-            b->inst[i].fn,
-            b->inst[i].x - i,
-            b->inst[i].y - i,
-            b->inst[i].z - i,
-            b->inst[i].w - i,
-            b->inst[i].ptr,
-            b->inst[i].imm,
-            b->inst[i].call,
-        };
+        *inst = b->inst[i];
+        inst->x -= i;
+        inst->y -= i;
+        inst->z -= i;
+        inst->w -= i;
+        inst++;
     }
 
     free(b->inst);
