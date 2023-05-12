@@ -2,6 +2,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#define len(arr) (int)( sizeof(arr) / sizeof(0[arr]) )
+
 #define K 4
 #define vec(T) T __attribute__((vector_size(4*K)))
 
@@ -159,22 +161,30 @@ Program* ret(Builder *b, Val x) {
 }
 
 void execute(Program const *p, int n, void *ptr[]) {
-    Vec *v = calloc((size_t)p->slots, sizeof *v);
+    Vec scratch[4096 / sizeof(Vec)];
+    Vec *v = p->slots <= len(scratch) ? scratch
+                                      : calloc((size_t)p->slots, sizeof *v);
     for (int i = 0; i < n/K*K; i += K) { p->inst->fn(p->inst,v+5,i+K,ptr); }
     for (int i = n/K*K; i < n; i += 1) { p->inst->fn(p->inst,v+5,i+1,ptr); }
-    free(v);
+    if (v != scratch) {
+        free(v);
+    }
 }
 
 stage(call) {
+    Vec scratch[4096 / sizeof(Vec)];
     Program const *p = ip->call;
-    Vec *cv = calloc((size_t)p->slots, sizeof *cv);
+    Vec *cv = p->slots <= len(scratch) ? scratch
+                                       : calloc((size_t)p->slots, sizeof *cv);
     cv[1] = v[ip->x];
     cv[2] = v[ip->y];
     cv[3] = v[ip->z];
     cv[4] = v[ip->w];
     p->inst->fn(p->inst,cv+5,end,ptr);
     *v = cv[0];
-    free(cv);
+    if (cv != scratch) {
+        free(cv);
+    }
     next;
 }
 Val call(Builder *b, Program const *p, Val x, Val y, Val z, Val w) {
