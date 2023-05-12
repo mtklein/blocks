@@ -43,20 +43,12 @@ static Val push_(Builder *b, Inst inst) {
 
 Builder* builder(void) {
     Builder *b = calloc(1, sizeof *b);
-    b->insts = 8;  // Slots 0-3 for return values, 4-7 for arguments.
-    b->inst  = calloc((size_t)b->insts, sizeof *b->inst);
+    b->insts = 5;  // Slot 0 for return value, 1-4 for arguments.
+    b->inst  = calloc(8, sizeof *b->inst);
     return b;
 }
-
-Val nil(struct Builder *b) {
-    (void)b;
-    return (Val){0};
-}
-
-Val arg(struct Builder *b, int i) {
-    (void)b;
-    return (Val){i+4};
-}
+Val nil(struct Builder *b       ) { (void)b; return (Val){  0}; }
+Val arg(struct Builder *b, int i) { (void)b; return (Val){i+1}; }
 
 #define stage(name) static void name##_(Inst const *ip, Vec *v, int end, void *ptr[])
 #define next        ip[1].fn(ip+1,v+1,end,ptr); return
@@ -148,10 +140,10 @@ stage(ret) {
 Program* ret(Builder *b, Val x) {
     push(b, ret_, x.id, .imm=-b->insts);
 
-    Program *p = malloc(sizeof *p + (size_t)(b->insts - 8) * sizeof *p->inst);
+    Program *p = malloc(sizeof *p + (size_t)(b->insts - 5) * sizeof *p->inst);
     p->slots = b->insts;
-    for (int i = 8; i < b->insts; i++) {
-        p->inst[i-8] = (Inst){
+    for (int i = 5; i < b->insts; i++) {
+        p->inst[i-5] = (Inst){
             b->inst[i].fn,
             b->inst[i].x - i,
             b->inst[i].y - i,
@@ -170,19 +162,19 @@ Program* ret(Builder *b, Val x) {
 
 void execute(Program const *p, int n, void *ptr[]) {
     Vec *v = calloc((size_t)p->slots, sizeof *v);
-    for (int i = 0; i < n/K*K; i += K) { p->inst->fn(p->inst,v+8,i+K,ptr); }
-    for (int i = n/K*K; i < n; i += 1) { p->inst->fn(p->inst,v+8,i+1,ptr); }
+    for (int i = 0; i < n/K*K; i += K) { p->inst->fn(p->inst,v+5,i+K,ptr); }
+    for (int i = n/K*K; i < n; i += 1) { p->inst->fn(p->inst,v+5,i+1,ptr); }
     free(v);
 }
 
 stage(call) {
     Program const *p = ip->call;
     Vec *cv = calloc((size_t)p->slots, sizeof *cv);
-    cv[4] = v[ip->x];
-    cv[5] = v[ip->y];
-    cv[6] = v[ip->z];
-    cv[7] = v[ip->w];
-    p->inst->fn(p->inst,cv+8,end,ptr);
+    cv[1] = v[ip->x];
+    cv[2] = v[ip->y];
+    cv[3] = v[ip->z];
+    cv[4] = v[ip->w];
+    p->inst->fn(p->inst,cv+5,end,ptr);
     *v = cv[0];
     next;
 }
