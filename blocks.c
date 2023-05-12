@@ -30,13 +30,13 @@ typedef struct Program {
 } Program;
 
 
-static _Bool is_pow2(int x) {
-    assert(x);
+static _Bool is_pow2_or_zero(int x) {
     return (x & (x-1)) == 0;
 }
 
 static Val push_(Builder *b, Inst inst) {
-    if (is_pow2(b->insts)) {
+    if (is_pow2_or_zero(b->insts)) {
+        assert(b->insts);
         b->inst = realloc(b->inst, sizeof *b->inst * (size_t)b->insts*2);
     }
     b->inst[b->insts] = inst;
