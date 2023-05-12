@@ -82,6 +82,7 @@ stage(store_varying) {
     int *p = ptr[ip->ptr];
     (end & (K-1)) ? __builtin_memcpy(p + end - 1, v+ip->x, 1*sizeof(int))
                   : __builtin_memcpy(p + end - K, v+ip->x, K*sizeof(int));
+    next;
 }
 void store_varying(Builder *b, int ptr, Val x) { push(b, store_varying_, x.id, .ptr=ptr); }
 
