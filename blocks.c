@@ -174,6 +174,7 @@ stage(call) {
     cv[4] = v[ip->w];
     p->inst->fn(p->inst,cv+5,end,ptr);
     *v = cv[0];
+    free(cv);
     next;
 }
 Val call(Builder *b, Program const *p, Val x, Val y, Val z, Val w) {
