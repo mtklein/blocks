@@ -179,7 +179,7 @@ Program* ret(Builder *b, Val x, Val y, Val z, Val w) {
 }
 
 void execute(Program const *p, int n, void *ptr[]) {
-    Vec scratch[4096 / sizeof(Vec)];
+    Vec scratch[1024 / sizeof(Vec)];
     Vec *v = p->slots <= len(scratch) ? scratch
                                       : calloc((size_t)p->slots, sizeof *v);
     for (int i = 0; i < n/K*K; i += K) { p->inst->fn(p->inst,v+8,i+K,ptr); }
@@ -190,7 +190,7 @@ void execute(Program const *p, int n, void *ptr[]) {
 }
 
 stage(call) {
-    Vec scratch[4096 / sizeof(Vec)];
+    Vec scratch[1024 / sizeof(Vec)];
     Program const *p = ip->call;
     Vec *cv = p->slots <= len(scratch) ? scratch
                                        : calloc((size_t)p->slots, sizeof *cv);
