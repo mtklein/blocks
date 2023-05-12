@@ -23,7 +23,7 @@ typedef struct Builder {
 } Builder;
 
 typedef struct Program {
-    int  insts,unused;
+    int  slots,unused;
     Inst inst[];
 } Program;
 
@@ -148,10 +148,10 @@ stage(ret) {
 Program* ret(Builder *b, Val x) {
     push(b, ret_, x.id, .imm=-b->insts);
 
-    Program *p = malloc(sizeof *p + (size_t)b->insts * sizeof *p->inst);
-    p->insts   = 0;
-    for (int i = 0; i < b->insts; i++) {
-        p->inst[p->insts++] = (Inst){
+    Program *p = malloc(sizeof *p + (size_t)(b->insts - 8) * sizeof *p->inst);
+    p->slots = b->insts;
+    for (int i = 8; i < b->insts; i++) {
+        p->inst[i-8] = (Inst){
             b->inst[i].fn,
             b->inst[i].x - i,
             b->inst[i].y - i,
@@ -169,20 +169,20 @@ Program* ret(Builder *b, Val x) {
 }
 
 void execute(Program const *p, int n, void *ptr[]) {
-    Vec *v = calloc((size_t)p->insts, sizeof *v);
-    for (int i = 0; i < n/K*K; i += K) { p->inst[8].fn(p->inst+8,v+8,i+K,ptr); }
-    for (int i = n/K*K; i < n; i += 1) { p->inst[8].fn(p->inst+8,v+8,i+1,ptr); }
+    Vec *v = calloc((size_t)p->slots, sizeof *v);
+    for (int i = 0; i < n/K*K; i += K) { p->inst->fn(p->inst,v+8,i+K,ptr); }
+    for (int i = n/K*K; i < n; i += 1) { p->inst->fn(p->inst,v+8,i+1,ptr); }
     free(v);
 }
 
 stage(call) {
     Program const *p = ip->call;
-    Vec *cv = calloc((size_t)p->insts, sizeof *v);
+    Vec *cv = calloc((size_t)p->slots, sizeof *cv);
     cv[4] = v[ip->x];
     cv[5] = v[ip->y];
     cv[6] = v[ip->z];
     cv[7] = v[ip->w];
-    p->inst[8].fn(p->inst+8,cv+8,end,ptr);
+    p->inst->fn(p->inst,cv+8,end,ptr);
     *v = cv[0];
     next;
 }
