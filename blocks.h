@@ -3,8 +3,8 @@
 struct Builder *builder(void);
 
 typedef struct { int id; } Val;
+static const Val nil = {0};
 
-Val            nil(struct Builder*);
 Val            arg(struct Builder*, int ix);
 Val          splat(struct Builder*, int imm);
 Val   load_uniform(struct Builder*, int ptr, int off);

@@ -49,7 +49,6 @@ Builder* builder(void) {
     b->inst  = calloc(8, sizeof *b->inst);
     return b;
 }
-Val nil(struct Builder *b       ) { (void)b; return (Val){  0}; }
 Val arg(struct Builder *b, int i) { (void)b; return (Val){i+1}; }
 
 #define stage(name) static void name##_(Inst const *ip, Vec *v, int end, void *ptr[])

@@ -22,8 +22,8 @@ int main(void) {
     {
         struct Builder *b = builder();
         Val x   =  arg(b,0),
-            xx  = call(b,sum, x,x ,nil(b),nil(b)),
-            xxx = call(b,sum, x,xx,nil(b),nil(b));
+            xx  = call(b,sum, x,x ,nil,nil),
+            xxx = call(b,sum, x,xx,nil,nil);
         triple = ret(b, xxx);
     }
 
@@ -31,9 +31,9 @@ int main(void) {
     {
         struct Builder *b = builder();
         Val v   = load_varying(b,1),
-            vvv =         call(b,triple, v,nil(b),nil(b),nil(b));
+            vvv =         call(b,triple, v,nil,nil,nil);
         store_varying(b,0, vvv);
-        map_triple = ret(b,nil(b));
+        map_triple = ret(b,nil);
     }
 
     float x[] = {1,2,3,4,5,6,7,8,9,10},
