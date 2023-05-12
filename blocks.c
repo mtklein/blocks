@@ -107,11 +107,11 @@ Val fmad(Builder *b, Val x, Val y, Val z) { return push(b, fmad_, x.id, y.id, z.
 #pragma GCC diagnostic ignored "-Wfloat-equal"
 stage(feq) { v->i = v[ip->x].f == v[ip->y].f; next(1); }
 stage(fne) { v->i = v[ip->x].f != v[ip->y].f; next(1); }
+#pragma GCC diagnostic pop
 stage(flt) { v->i = v[ip->x].f <  v[ip->y].f; next(1); }
 stage(fle) { v->i = v[ip->x].f <= v[ip->y].f; next(1); }
 stage(fgt) { v->i = v[ip->x].f >  v[ip->y].f; next(1); }
 stage(fge) { v->i = v[ip->x].f >= v[ip->y].f; next(1); }
-#pragma GCC diagnostic pop
 
 Val feq(Builder *b, Val x, Val y) { return push(b, feq_, x.id, y.id); }
 Val fne(Builder *b, Val x, Val y) { return push(b, fne_, x.id, y.id); }
