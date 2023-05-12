@@ -205,11 +205,10 @@ stage(call) {
     next;
 }
 Val4 call(Builder *b, Program const *p, Val x, Val y, Val z, Val w) {
-    x = push(b, call_, x.id,y.id,z.id,w.id, .call=p);
     return (Val4) {
-        x,
-        push(b, NULL, x.id),
-        push(b, NULL, x.id),
-        push(b, NULL, x.id),
+        push(b, call_, x.id,y.id,z.id,w.id, .call=p),
+        push(b, NULL),
+        push(b, NULL),
+        push(b, NULL),
     };
 }
