@@ -142,7 +142,7 @@ stage(ret) {
 Program* ret(Builder *b, Val x) {
     push(b, ret_, x.id, .imm=-b->insts);
 
-    Program *p = malloc(sizeof *p + (size_t)(b->insts - 5) * sizeof *p->inst);
+    Program *p = calloc(1, sizeof *p + (size_t)(b->insts - 5) * sizeof *p->inst);
     p->slots = b->insts;
 
     Inst *inst = p->inst;
