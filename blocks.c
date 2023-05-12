@@ -1,5 +1,4 @@
 #include "blocks.h"
-#include <assert.h>
 #include <stdlib.h>
 
 #define len(arr) (int)( sizeof(arr) / sizeof(0[arr]) )
@@ -36,8 +35,7 @@ static _Bool is_pow2_or_zero(int x) {
 
 static Val push_(Builder *b, Inst inst) {
     if (is_pow2_or_zero(b->slots)) {
-        assert(b->slots);
-        b->inst = realloc(b->inst, sizeof *b->inst * (size_t)b->slots*2);
+        b->inst = realloc(b->inst, sizeof *b->inst * (size_t)(b->slots ? b->slots*2 : 1));
     }
     b->inst[b->slots] = inst;
     return (Val){b->slots++};
@@ -46,8 +44,15 @@ static Val push_(Builder *b, Inst inst) {
 
 Builder* builder(void) {
     Builder *b = calloc(1, sizeof *b);
-    b->slots = 8;  // Slots 0-3 for return values, 4-7 for arguments.
-    b->inst  = calloc(8, sizeof *b->inst);
+    push(b,NULL);  // Slots 0-3 for return values.  (Slot 0 also does double duty as nil.)
+    push(b,NULL);
+    push(b,NULL);
+    push(b,NULL);
+
+    push(b,NULL);  // Slots 4-7 for arguments.
+    push(b,NULL);
+    push(b,NULL);
+    push(b,NULL);
     return b;
 }
 Val arg(struct Builder *b, int i) { (void)b; return (Val){i+4}; }
