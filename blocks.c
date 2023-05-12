@@ -53,18 +53,18 @@ Builder* builder(void) {
 Val arg(struct Builder *b, int i) { (void)b; return (Val){i+4}; }
 
 #define stage(name) static void name##_(Inst const *ip, Vec *v, int end, void *ptr[])
-#define next        ip[1].fn(ip+1,v+1,end,ptr); return
+#define next(vals)  ip[1].fn(ip+1,v+vals,end,ptr); return
 
 stage(splat) {
     v->i = (vec(int)){0} + ip->imm;
-    next;
+    next(1);
 }
 Val splat(Builder *b, int imm) { return push(b, splat_, .imm=imm); }
 
 stage(load_uniform) {
     int const *p = ptr[ip->ptr];
     v->i = (vec(int)){0} + p[ip->imm];
-    next;
+    next(1);
 }
 Val load_uniform(Builder *b, int ptr, int off) {
     return push(b, load_uniform_, .ptr=ptr, .imm=off);
@@ -74,7 +74,7 @@ stage(load_varying) {
     int const *p = ptr[ip->ptr];
     (end & (K-1)) ? __builtin_memcpy(v, p + end - 1, 1*sizeof(int))
                   : __builtin_memcpy(v, p + end - K, K*sizeof(int));
-    next;
+    next(1);
 }
 Val load_varying(Builder *b, int ptr) { return push(b, load_varying_, .ptr=ptr); }
 
@@ -82,15 +82,15 @@ stage(store_varying) {
     int *p = ptr[ip->ptr];
     (end & (K-1)) ? __builtin_memcpy(p + end - 1, v+ip->x, 1*sizeof(int))
                   : __builtin_memcpy(p + end - K, v+ip->x, K*sizeof(int));
-    next;
+    next(1);  // TODO: 0?
 }
 void store_varying(Builder *b, int ptr, Val x) { push(b, store_varying_, x.id, .ptr=ptr); }
 
-stage(fadd) { v->f = v[ip->x].f + v[ip->y].f             ; next; }
-stage(fsub) { v->f = v[ip->x].f - v[ip->y].f             ; next; }
-stage(fmul) { v->f = v[ip->x].f * v[ip->y].f             ; next; }
-stage(fdiv) { v->f = v[ip->x].f / v[ip->y].f             ; next; }
-stage(fmad) { v->f = v[ip->x].f * v[ip->y].f + v[ip->z].f; next; }
+stage(fadd) { v->f = v[ip->x].f + v[ip->y].f             ; next(1); }
+stage(fsub) { v->f = v[ip->x].f - v[ip->y].f             ; next(1); }
+stage(fmul) { v->f = v[ip->x].f * v[ip->y].f             ; next(1); }
+stage(fdiv) { v->f = v[ip->x].f / v[ip->y].f             ; next(1); }
+stage(fmad) { v->f = v[ip->x].f * v[ip->y].f + v[ip->z].f; next(1); }
 
 Val fadd(Builder *b, Val x, Val y       ) { return push(b, fadd_, x.id, y.id      ); }
 Val fsub(Builder *b, Val x, Val y       ) { return push(b, fsub_, x.id, y.id      ); }
@@ -100,12 +100,12 @@ Val fmad(Builder *b, Val x, Val y, Val z) { return push(b, fmad_, x.id, y.id, z.
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wfloat-equal"
-stage(feq) { v->i = v[ip->x].f == v[ip->y].f; next; }
-stage(fne) { v->i = v[ip->x].f != v[ip->y].f; next; }
-stage(flt) { v->i = v[ip->x].f <  v[ip->y].f; next; }
-stage(fle) { v->i = v[ip->x].f <= v[ip->y].f; next; }
-stage(fgt) { v->i = v[ip->x].f >  v[ip->y].f; next; }
-stage(fge) { v->i = v[ip->x].f >= v[ip->y].f; next; }
+stage(feq) { v->i = v[ip->x].f == v[ip->y].f; next(1); }
+stage(fne) { v->i = v[ip->x].f != v[ip->y].f; next(1); }
+stage(flt) { v->i = v[ip->x].f <  v[ip->y].f; next(1); }
+stage(fle) { v->i = v[ip->x].f <= v[ip->y].f; next(1); }
+stage(fgt) { v->i = v[ip->x].f >  v[ip->y].f; next(1); }
+stage(fge) { v->i = v[ip->x].f >= v[ip->y].f; next(1); }
 #pragma GCC diagnostic pop
 
 Val feq(Builder *b, Val x, Val y) { return push(b, feq_, x.id, y.id); }
@@ -115,19 +115,19 @@ Val fle(Builder *b, Val x, Val y) { return push(b, fle_, x.id, y.id); }
 Val fgt(Builder *b, Val x, Val y) { return push(b, fgt_, x.id, y.id); }
 Val fge(Builder *b, Val x, Val y) { return push(b, fge_, x.id, y.id); }
 
-stage(band) { v->i =  v[ip->x].i & v[ip->y].i                              ; next; }
-stage(bor ) { v->i =  v[ip->x].i | v[ip->y].i                              ; next; }
-stage(bxor) { v->i =  v[ip->x].i ^ v[ip->y].i                              ; next; }
-stage(bsel) { v->i = (v[ip->x].i & v[ip->y].i) | (~v[ip->x].i & v[ip->z].i); next; }
+stage(band) { v->i =  v[ip->x].i & v[ip->y].i                              ; next(1); }
+stage(bor ) { v->i =  v[ip->x].i | v[ip->y].i                              ; next(1); }
+stage(bxor) { v->i =  v[ip->x].i ^ v[ip->y].i                              ; next(1); }
+stage(bsel) { v->i = (v[ip->x].i & v[ip->y].i) | (~v[ip->x].i & v[ip->z].i); next(1); }
 
 Val band(Builder *b, Val x, Val y       ) { return push(b, band_, x.id, y.id      ); }
 Val bor (Builder *b, Val x, Val y       ) { return push(b, bor_ , x.id, y.id      ); }
 Val bxor(Builder *b, Val x, Val y       ) { return push(b, bxor_, x.id, y.id      ); }
 Val bsel(Builder *b, Val x, Val y, Val z) { return push(b, bsel_, x.id, y.id, z.id); }
 
-stage(shl) { v->u = v[ip->x].u << v[ip->y].i; next; }
-stage(shr) { v->u = v[ip->x].u >> v[ip->y].i; next; }
-stage(sra) { v->i = v[ip->x].i >> v[ip->y].i; next; }
+stage(shl) { v->u = v[ip->x].u << v[ip->y].i; next(1); }
+stage(shr) { v->u = v[ip->x].u >> v[ip->y].i; next(1); }
+stage(sra) { v->i = v[ip->x].i >> v[ip->y].i; next(1); }
 
 Val shl(Builder *b, Val x, Val y) { return push(b, shl_, x.id, y.id); }
 Val shr(Builder *b, Val x, Val y) { return push(b, shr_, x.id, y.id); }
@@ -201,8 +201,7 @@ stage(call) {
     if (cv != scratch) {
         free(cv);
     }
-    v += 3;
-    next;
+    next(4);
 }
 Val4 call(Builder *b, Program const *p, Val x, Val y, Val z, Val w) {
     return (Val4) {
