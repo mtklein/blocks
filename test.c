@@ -1,7 +1,7 @@
 #include "blocks.h"
-#include "expect.h"
 #include <stdlib.h>
 
+#define expect(x) if (!(x)) __builtin_trap()
 #define len(arr) (int)( sizeof(arr) / sizeof(0[arr]) )
 
 static _Bool equiv(float x, float y) {
