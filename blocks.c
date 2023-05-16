@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: MIT
 #include "blocks.h"
 #include <stdlib.h>
 
